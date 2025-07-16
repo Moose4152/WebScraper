@@ -119,75 +119,105 @@ async def amazon_navigation_async(url, email, password):
         hrefs = [await a.get_attribute('href') for a in anchors]
         all_prodLinks = []
         for link in hrefs:
-            complete_link = f"{url}{link}"
-            all_prodLinks.append(complete_link)
+            product_complete_link = f"{url}{link}"
+            all_prodLinks.append(product_complete_link)
+            product_page = await context.new_page()
+            await product_page.goto(product_complete_link)
+            await product_page.wait_for_load_state('domcontentloaded')
+            time.sleep(3)
+            all_review_anchor = await product_page.query_selector_all('a.a-link-emphasis.a-text-bold')
+            review_final_links = [await a.get_attribute('href') for a in all_review_anchor]
 
-        product_page = await context.new_page()
-        await product_page.goto(all_prodLinks[0])
-        await asyncio.sleep(4)
-        # Save product page HTML
-        product_html = await product_page.content()
-        write_html_to_file(product_html, 'product_page.html')
-        
-        # await product_page.wait_for_selector('a[data-hook="see-all-reviews-link-foot"]')
-        # await product_page.wait_for_load_state('domcontentloaded')
-        # await product_page.click('a[data-hook="see-all-reviews-link-foot"]')
-        # await product_page.click('a.a-link-emphasis.a-text-bold')
-        # # await page.wait_for_selector('a.a-link-emphasis.a-text-bold', state='attached', timeout=10000)
-        all_review_anchor = await product_page.query_selector_all('a.a-link-emphasis.a-text-bold')
-
-        print("Logged in as:", await page.inner_text('#nav-link-accountList-nav-line-1'))
-        review_final_links = [await a.get_attribute('href') for a in all_review_anchor]
-        ff_review_links = []
-        await asyncio.sleep(5)
-        for link in review_final_links:
-            complete_link = f"{url}{link}"
-            ff_review_links.append(complete_link)
-            print(complete_link)
-            print("*************")
-
-
-        if ff_review_links:
+            complete_review_link = f"{url}{review_final_links[0]}"
+            time.sleep(4)
             review_page = await context.new_page()
-            await review_page.goto(ff_review_links[0])
-            await asyncio.sleep(2)
-            # print('awaiting for next reviews selector and clicking it!!')
-            # nav = page.locator('ul.a-pagination').locator('li')
-            # await nav.first.click()
-            # next_button = page.locator("ul.a-pagination li.a-last a")
-            # if next_button.is_visible():
-            #     next_button.click()
-            #     page.wait_for_load_state("domcontentloaded")
-            #     time.sleep(2)  # Wait for new page load
-            # else:
-            #     print("⛔ No more pages.")
-            # print(nav)
-
-            #  JS code : 
-            #  const nextLink = Array.from(document.querySelectorAll('a'))
-            #         .find(x => x.textContent.toLowerCase().includes('next page'));
-
-            #     if (nextLink) {
-            #         nextLink.click();
-            #         return Array.from(nextLink.outerHTML);
-            #     } else {
-            #         return [];
-            #     }
-
+            await review_page.goto(complete_review_link)
+            await product_page.wait_for_load_state('domcontentloaded')
+            time.sleep(3)
             
+            loop_true = True
+            while loop_true:
+                time.sleep(4)
+                next_button =  review_page.locator(selector='li.a-last',has_text='next page')
+                next_button_disabled = review_page.locator(selector='li.a-disabled.a-last',has_text='next page')
                 
-            #cm_cr-pagination_bar > ul > li.a-last
-            # nav_list = await review_page.query_selector_all('ul.a-pagination')
-            next_button = page.locator("li.a-last")
-            print(next_button)
-            await review_page.click('li.a-last')
+                bb_count = await next_button.count()
+                disabled_next_btn_count = await next_button_disabled.count()
 
-            time.sleep(10)
+                if(bb_count > 0 and disabled_next_btn_count == 0): 
+                    await review_page.click('li.a-last')
+                else:
+                    loop_true=False
+            
+                print(f'scanned all reviews for link : {link} ')
+            await review_page.close()
+            time.sleep(3)
+            await product_page.close()
+
+        # product_page = await context.new_page()
+        # await product_page.goto(all_prodLinks[0])
+        # await asyncio.sleep(4)
+        # # Save product page HTML
+        # product_html = await product_page.content()
+        # write_html_to_file(product_html, 'product_page.html')
+        
+        # # await product_page.wait_for_selector('a[data-hook="see-all-reviews-link-foot"]')
+        # # await product_page.wait_for_load_state('domcontentloaded')
+        # # await product_page.click('a[data-hook="see-all-reviews-link-foot"]')
+        # # await product_page.click('a.a-link-emphasis.a-text-bold')
+        # # # await page.wait_for_selector('a.a-link-emphasis.a-text-bold', state='attached', timeout=10000)
+        # all_review_anchor = await product_page.query_selector_all('a.a-link-emphasis.a-text-bold')
+
+        # print("Logged in as:", await page.inner_text('#nav-link-accountList-nav-line-1'))
+        # review_final_links = [await a.get_attribute('href') for a in all_review_anchor]
+        # ff_review_links = []
+        # await asyncio.sleep(5)
+        # for link in review_final_links:
+        #     complete_link = f"{url}{link}"
+        #     ff_review_links.append(complete_link)
+        #     print(complete_link)
+        #     print("*************")
 
 
-            next_button = page.locator("li.a-last")
-            print(next_button)
-            await review_page.click('li.a-last')
+        # for link in ff_review_links:
+        #     review_page = await context.new_page()
+        #     await review_page.goto(link)
+        #     await asyncio.sleep(2)
+
+        #     loop_true = True
+        #     while loop_true:
+        #         time.sleep(4)
+        #         next_button =  review_page.locator(selector='li.a-last',has_text='next page')
+        #         next_button_disabled = review_page.locator(selector='li.a-disabled.a-last',has_text='next page')
+                
+        #         bb_count = await next_button.count()
+        #         disabled_next_btn_count = await next_button_disabled.count()
+
+        #         if(bb_count > 0 and disabled_next_btn_count == 0): 
+        #             print(next_button)
+        #             await review_page.click('li.a-last')
+        #         else:
+        #             loop_true=False
+            
+        #         print(f'scanned all reviews for link : {link} ')
+        #     review_page.close()
+
+            # counter = 3
+            # while counter > 0:
+            #     next_button1 = review_page.locator(selector='li.a-last',has_text='next page')
+            #     btn_counts = await next_button1.count()
+            #     print(f'{next_button1} , btn_counts : {btn_counts}')
+
+
+
+            #     next_button2 = review_page.locator(selector='a',has_text='next page')
+            #     btn_counts2 = await next_button2.count()
+            #     print(f'{next_button2} , btn_counts : {btn_counts2}')
+
+
+            #     await review_page.click('li.a-last')
+            #     counter -= 1
+            #     time.sleep(10)
 
 
             # buttons_pagination_section = await review_page.query_selector('ul.a-pagination')
@@ -205,8 +235,6 @@ async def amazon_navigation_async(url, email, password):
             # nav_button = await nav.query_selector_all('li')
             # print(f'second nav next button : {nav_button}')
             # await nav_button[1].click()
-
-            time.sleep(5)
 
             # while(len(nav_button) >= 2):
 
@@ -232,7 +260,6 @@ async def amazon_navigation_async(url, email, password):
             # print("Fit Markdown (if filter used):\n", md_result.fit_markdown)
 
             # write_html_to_file(review_html, 'review_page.html')
-            await review_page.close()
         await browser.close()
     return
 
