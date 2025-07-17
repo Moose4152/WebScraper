@@ -88,15 +88,28 @@ async def amazon_navigation_crawl4ai(url, email, password):
             print("Review link:", link)
         # Optionally, save HTML or visit review pages as needed
 
-
+def write_markdown_content(content, file_path):
+    """
+    Write content to a markdown file.
+    
+    Args:
+        content (str): Content to write
+        file_path (str): Path to the output file
+    """
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(content)
 
 async def amazon_navigation_async(url, email, password):
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.firefox.launch(headless=False)
         context = await browser.new_context()
         page = await context.new_page()
 
         await page.goto(url)
+        # signin_check = page.locator(selector= '', has_text='signin')
+        # print(f'print signin locator : {signin_check}')
+        # write_html_to_file(landing_page, 'landing_page.html')
+        time.sleep(4)
         await asyncio.sleep(2)
         await page.click('#nav-link-accountList')
         await asyncio.sleep(5)
@@ -118,6 +131,7 @@ async def amazon_navigation_async(url, email, password):
         
         hrefs = [await a.get_attribute('href') for a in anchors]
         all_prodLinks = []
+        product_count = 1
         for link in hrefs:
             product_complete_link = f"{url}{link}"
             all_prodLinks.append(product_complete_link)
@@ -136,8 +150,16 @@ async def amazon_navigation_async(url, email, password):
             time.sleep(3)
             
             loop_true = True
+            review_count = 1
+            md_generator = DefaultMarkdownGenerator()
             while loop_true:
                 time.sleep(4)
+                review_html = await review_page.content()
+                md_result = md_generator.generate_markdown(input_html=review_html)
+                markdown_content = md_result.markdown_with_citations
+                path = f'product:{product_count}_review:{review_count}_review_page.md'
+                write_markdown_content(markdown_content, path)
+            
                 next_button =  review_page.locator(selector='li.a-last',has_text='next page')
                 next_button_disabled = review_page.locator(selector='li.a-disabled.a-last',has_text='next page')
                 
@@ -149,8 +171,11 @@ async def amazon_navigation_async(url, email, password):
                 else:
                     loop_true=False
             
-                print(f'scanned all reviews for link : {link} ')
+                
+                review_count += 1
+            print(f'scanned all reviews for link : {link} ')
             await review_page.close()
+            product_count += 1
             time.sleep(3)
             await product_page.close()
 
@@ -265,6 +290,11 @@ async def amazon_navigation_async(url, email, password):
 
 
 
+# def generate_markdown(html_list):
+#     md_generator = DefaultMarkdownGenerator()
+#     for html in html_list:
+#         md_result = md_generator.generate_markdown(input_html=html)
+#         write_html_to_file(md_result,)
 
 
 def amazon_login(email, password):
@@ -565,8 +595,13 @@ if __name__ == "__main__":
     url = 'https://amazon.in'
     # cookies = get_amazon_cookies(browser_cookies_filepath=browser_cookies_filePath,creds_file_path=creds_filepath)
     # print(cookies)
+    import os
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=creds_filepath)
+    email = os.getenv('AMAZON_EMAIL')
+    password = os.getenv('AMAZON_PASSWORD')
 
-    asyncio.run(amazon_navigation_async(url=url,email='',password=''))
+    asyncio.run(amazon_navigation_async(url=url,email=email,password=password))
     # asyncio.run(amazon_navigation_crawl4ai("https://www.amazon.in/", "your_email", "your_password"))
     # cookies = amazon_cookies_handler()
     # print(cookies)
